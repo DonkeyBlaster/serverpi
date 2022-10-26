@@ -1,1 +1,6 @@
 # serverpi
+
+Discord bot token should be in left in a file named `token.txt`.
+FTX keys and secrets should be in `ftx_key.txt` and `ftx_sec.txt`.
+
+TODO: Use environment variables
