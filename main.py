@@ -294,28 +294,6 @@ async def lcdreset(context: SlashContext):
         await context.reply(combined)
 
 
-@slash.slash(name="updatepositions", guild_ids=slash_guilds)
-@commands.is_owner()
-async def updatepositions(context: SlashContext):
-    ftx_positionmanager.update_positions()
-    await context.reply(str(ftx_positionmanager.get_all_raw_positions()))
-
-
-@slash.slash(name="printpositions", guild_ids=slash_guilds)
-@commands.is_owner()
-async def printpositions(context: SlashContext):
-    await context.reply(str(ftx_positionmanager.get_all_raw_positions()))
-
-
-@slash.slash(name="notifyonnextfill", guild_ids=slash_guilds)
-@commands.is_owner()
-async def notifyonnextfill(context: SlashContext):
-    client.notify_next_fill = True
-    m = await context.reply(":white_check_mark:")
-    await asyncio.sleep(delete_cooldown)
-    await m.delete()
-
-
 for extension in startup_extensions:
     try:
         client.load_extension(extension)
