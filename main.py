@@ -8,6 +8,7 @@ import time
 from discord import ui
 from dotenv import load_dotenv
 from guildlist import slash_guilds
+from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Bot
 
@@ -34,7 +35,8 @@ async def on_ready():
     print('------')
 
 
-@client.hybrid_command(name='ping', guild_ids=slash_guilds)
+@client.hybrid_command(name='ping')
+@app_commands.guilds(*slash_guilds)
 async def ping(context):
     beforeping = time.monotonic()
     messageping = await context.send("Pong!")
@@ -44,7 +46,8 @@ REST API: `{int(pingtime)}ms`
 WS API Heartbeat: `{int(client.latency * 1000)}ms`""")
 
 
-@client.hybrid_command(name='load', guild_ids=slash_guilds)
+@client.hybrid_command(name='load')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def load(context, ext):
     try:
@@ -60,7 +63,8 @@ async def load(context, ext):
             await context.send("Error exceeds 2000 characters. See console for details.")
 
 
-@client.hybrid_command(name='unload', guild_ids=slash_guilds)
+@client.hybrid_command(name='unload')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def unload(context, ext):
     await client.unload_extension(ext)
@@ -69,7 +73,8 @@ async def unload(context, ext):
     await msg.delete()
 
 
-@client.hybrid_command(name='reload', guild_ids=slash_guilds)
+@client.hybrid_command(name='reload')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def reload(context, ext):
     try:
@@ -142,7 +147,8 @@ async def handle_button_press():
     client.votekick_msg = await client.votekick_msg.edit(embed=embededit, view=VoteKickView())
 
 
-@client.hybrid_command(name='votekick', guild_ids=slash_guilds)
+@client.hybrid_command(name='votekick')
+@app_commands.guilds(*slash_guilds)
 async def votekick(context, target: discord.Member):
     if context.author.voice:
         if target.voice.channel == context.author.voice.channel:
@@ -164,7 +170,8 @@ async def votekick(context, target: discord.Member):
         await context.send(content="You must be in a VC to use this.", hidden=True)
 
 
-@client.hybrid_command(name='shell', guild_ids=slash_guilds)
+@client.hybrid_command(name='shell')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def shell(context, *, command: str):
     check = discord.utils.get(context.guild.emojis, name="checkmark")
@@ -182,7 +189,8 @@ async def shell(context, *, command: str):
         await context.send(_e)
 
 
-@client.hybrid_command(name='cryptopricebotsrestart', guild_ids=slash_guilds)
+@client.hybrid_command(name='cryptopricebotsrestart')
+@app_commands.guilds(*slash_guilds)
 async def cryptopricebotsrestart(context):
     check = discord.utils.get(context.guild.emojis, name="checkmark")
     try:
@@ -201,7 +209,8 @@ async def cryptopricebotsrestart(context):
         await context.send(str(_e))
 
 
-@client.hybrid_command(name='purge', guild_ids=slash_guilds)
+@client.hybrid_command(name='purge')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def purge(context, number: int = None):
     if number is None or number > 100:
@@ -217,7 +226,8 @@ async def purge(context, number: int = None):
         await msg.delete()
 
 
-@client.hybrid_command(name='unpurge', guild_ids=slash_guilds)
+@client.hybrid_command(name='unpurge')
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def restore(context, number: int = 0):
     if number > 100:
@@ -249,12 +259,14 @@ async def restore(context, number: int = 0):
     await m.delete()
 
 
-@client.hybrid_command(name='coin', guild_ids=slash_guilds)
+@client.hybrid_command(name='coin')
+@app_commands.guilds(*slash_guilds)
 async def coin(context):
     await context.send(random.choice(["Heads", "Tails"]))
 
 
-@client.hybrid_command(name='temps', guild_ids=slash_guilds)
+@client.hybrid_command(name='temps')
+@app_commands.guilds(*slash_guilds)
 async def temps(context):
     pipe = subprocess.Popen("ssh pi@serverpi1 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()
@@ -283,7 +295,8 @@ async def temps(context):
     await context.send(f"serverpi1: `{serverpi1}`\nserverpi2: `{serverpi2}`\nserverpi3: `{serverpi3}`\nserverpi4: `{serverpi4}`")
 
 
-@client.hybrid_command(name="restart", guild_ids=slash_guilds)
+@client.hybrid_command(name="restart")
+@app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def restart(context):
     m = await context.reply(":white_check_mark:")
@@ -291,7 +304,8 @@ async def restart(context):
     subprocess.Popen("sudo service serverpi restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-@client.hybrid_command(name="lcdreset", guild_ids=slash_guilds)
+@client.hybrid_command(name="lcdreset")
+@app_commands.guilds(*slash_guilds)
 async def lcdreset(context):
     pipe = subprocess.Popen("ssh pi@serverpi4 sudo service crypto-prices restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()

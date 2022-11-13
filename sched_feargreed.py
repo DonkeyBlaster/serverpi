@@ -2,6 +2,7 @@ import json
 
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from discord import app_commands
 from discord.ext import commands
 
 from guildlist import slash_guilds
@@ -37,7 +38,8 @@ class FearGreed(commands.Cog):
             channel = client.get_channel(696082479752413277)
             await channel.send(f"Updated F&G to {name_string}")
 
-    @commands.hybrid_command(name='forceupdaterolename', guild_ids=slash_guilds)
+    @commands.hybrid_command(name='forceupdaterolename')
+    @app_commands.guilds(*slash_guilds)
     async def forceupdaterolename(self, context):
         name_string = get_name_string()
         await update_role_name(self.client, name_string)

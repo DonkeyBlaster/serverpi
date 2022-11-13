@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from discord import app_commands
 from discord.ext import commands
 
 from guildlist import slash_guilds
@@ -17,6 +18,7 @@ class Reminders(commands.Cog):
         self.client = client
 
     @commands.hybrid_command(name="remindme", guild_ids=slash_guilds)
+    @app_commands.guilds(*slash_guilds)
     async def remindme(self, context, days: int = 0, hours: int = 0, minutes: int = 0, seconds: int = 0, *, message: str = None):
         reminder_time = datetime.now()
         reminder_time += timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
