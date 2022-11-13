@@ -58,5 +58,5 @@ class ChatHandler(commands.Cog):
             await message.reply(f"${round(parse_price(message.content) * get_usd_cad_conversion(), 2)} CAD")
 
 
-def setup(client):
-    client.add_cog(ChatHandler(client))
+async def setup(client):
+    await client.add_cog(ChatHandler(client))

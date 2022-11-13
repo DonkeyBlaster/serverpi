@@ -4,45 +4,38 @@ import subprocess
 import random
 import discord
 import time
+
+from discord import ui
 from dotenv import load_dotenv
 from guildlist import slash_guilds
 from discord.ext import commands
 from discord.ext.commands import Bot
-from discord_slash import SlashCommand, SlashContext, ComponentContext
-from discord_slash.utils.manage_components import create_button, create_actionrow, wait_for_component
-from discord_slash.utils.manage_commands import create_choice, create_option
-from discord_slash.model import ButtonStyle
 
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 delete_cooldown = 2
 
 startup_extensions = ["chathandler", "sched_feargreed", "reminders"]
-cog_choices = []
-for extstr in startup_extensions:
-    cog_choices.append(create_choice(name=extstr, value=extstr))
-ext_options = [create_option(name="ext", description="The cog to interact with", option_type=3, required=True, choices=cog_choices)]
-
-client = Bot(intents=discord.Intents.all(), command_prefix=' ')
-slash = SlashCommand(client, sync_commands=True, sync_on_cog_reload=True)
-
-
-def check_owner(cctx: ComponentContext):
-    return cctx.author_id == 291661685863874560
+client = Bot(intents=discord.Intents.all(), command_prefix='!')
 
 
 @client.event
 async def on_ready():
+    for extension in startup_extensions:
+        try:
+            await client.load_extension(extension)
+            print(f"Extension {extension} loaded")
+        except Exception as e:
+            print(e)
+
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
-    client.futures_channel = client.get_channel(831064380242133002)
-    client.notify_next_fill = True
 
 
-@slash.slash(name='ping', guild_ids=slash_guilds)
-async def ping(context: SlashContext):
+@client.hybrid_command(name='ping', guild_ids=slash_guilds)
+async def ping(context):
     beforeping = time.monotonic()
     messageping = await context.send("Pong!")
     pingtime = (time.monotonic() - beforeping) * 1000
@@ -51,11 +44,11 @@ REST API: `{int(pingtime)}ms`
 WS API Heartbeat: `{int(client.latency * 1000)}ms`""")
 
 
-@slash.slash(name='load', guild_ids=slash_guilds, options=ext_options)
+@client.hybrid_command(name='load', guild_ids=slash_guilds)
 @commands.is_owner()
-async def load(context: SlashContext, ext):
+async def load(context, ext):
     try:
-        client.load_extension(ext)
+        await client.load_extension(ext)
         msg = await context.send(f"Extension `{ext}` loaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
@@ -67,21 +60,21 @@ async def load(context: SlashContext, ext):
             await context.send("Error exceeds 2000 characters. See console for details.")
 
 
-@slash.slash(name='unload', guild_ids=slash_guilds, options=ext_options)
+@client.hybrid_command(name='unload', guild_ids=slash_guilds)
 @commands.is_owner()
-async def unload(context: SlashContext, ext):
-    client.unload_extension(ext)
+async def unload(context, ext):
+    await client.unload_extension(ext)
     msg = await context.send(f"Extension `{ext}` unloaded.")
     await asyncio.sleep(delete_cooldown)
     await msg.delete()
 
 
-@slash.slash(name='reload', guild_ids=slash_guilds, options=ext_options)
+@client.hybrid_command(name='reload', guild_ids=slash_guilds)
 @commands.is_owner()
-async def reload(context: SlashContext, ext):
+async def reload(context, ext):
     try:
-        client.unload_extension(ext)
-        client.load_extension(ext)
+        await client.unload_extension(ext)
+        await client.load_extension(ext)
         msg = await context.send(f"Extension `{ext}` reloaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
@@ -93,65 +86,85 @@ async def reload(context: SlashContext, ext):
             await context.send("Error exceeds 2000 characters. See console for details.")
 
 
-@slash.slash(name='votekick', guild_ids=slash_guilds)
-async def votekick(context: SlashContext, member: discord.Member):
-    if context.author.voice:
-        if member.voice.channel == context.author.voice.channel:
-            processed = False
+class VoteKickView(ui.View):
+    def __init__(self):
+        super().__init__()
+
+    @ui.button(label="F1", style=discord.ButtonStyle.green)
+    async def f1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in client.votekick_f1 or interaction.user in client.votekick_f2:
+            await interaction.response.send_message("You have already voted.", ephemeral=True)
+        else:
+            await interaction.response.defer()
+            client.votekick_f1.append(interaction.user)
+            await handle_button_press()
+
+    @ui.button(label="F2", style=discord.ButtonStyle.red)
+    async def f2(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in client.votekick_f1 or interaction.user in client.votekick_f2:
+            await interaction.response.send_message("You have already voted.", ephemeral=True)
+        else:
+            await interaction.response.defer()
+            client.votekick_f2.append(interaction.user)
+            await handle_button_press()
+
+
+async def handle_button_press():
+    voting_done = False
+    to_kick = False
+    lenf1 = len(client.votekick_f1)
+    lenf2 = len(client.votekick_f2)
+
+    if lenf1 + lenf2 >= len(client.votekick_author.voice.channel.members):  # if everyone voted
+        if lenf1 >= (lenf1 + lenf2 - 1):  # if those that voted f1 are all but the kickee, kick
+            to_kick = True
+            voting_done = True
+        else:
             to_kick = False
-            f1 = []
-            f2 = []
+    if lenf2 > 1:  # if anyone other than the kickee voted no, just in like in cs, don't kick
+        to_kick = False
+        voting_done = True
+
+    if voting_done:
+        if to_kick:
+            embededit = discord.Embed(title="Vote Passed!", color=0x00ff00)
+            embededit.add_field(name="Kicking user...", value=client.votekick_target.mention, inline=False)
+            await client.votekick_target.move_to(None)
+        elif not to_kick:
+            embededit = discord.Embed(title="Vote Failed.", color=0xff0000)
+            embededit.add_field(name="Kick failed:", value="Not enough users voted.", inline=False)
+
+    elif not voting_done:  # if voting is not done, display updated vote count
+        embededit = discord.Embed(title=f"Vote by: {client.votekick_author}", color=0xc6c6c6)
+        embededit.add_field(name="Kick user:", value=client.votekick_target.mention, inline=False)
+        embededit.set_footer(text=f"Yes: {lenf1} | No: {lenf2}")
+
+    client.votekick_msg = await client.votekick_msg.edit(embed=embededit, view=VoteKickView())
+
+
+@client.hybrid_command(name='votekick', guild_ids=slash_guilds)
+async def votekick(context, target: discord.Member):
+    if context.author.voice:
+        if target.voice.channel == context.author.voice.channel:
             # autovotes like csgo
-            f1.append(context.author)
-            f2.append(member)
-            # --
-            embed = discord.Embed(title=f"Vote by: {context.author.display_name}", color=0xc6c6c6)
-            embed.add_field(name="Kick user:", value=member.mention, inline=False)
+            client.votekick_f1 = [context.author]
+            client.votekick_f2 = [target]
+            client.votekick_author = context.author
+            client.votekick_target = target
+
+            embed = discord.Embed(title=f"Vote by: {client.votekick_author}", color=0xc6c6c6)
+            embed.add_field(name="Kick user:", value=client.votekick_target.mention, inline=False)
             embed.set_footer(text="Yes: 1 | No: 1")
-            buttons = [create_button(style=ButtonStyle.green, label="F1"),
-                       create_button(style=ButtonStyle.red, label="F2")]
-            action_row = create_actionrow(*buttons)
-            msg = await context.send(embed=embed, components=[action_row])
-            while not processed:
-                button_ctx: ComponentContext = await wait_for_component(client, components=action_row)
-                if button_ctx.author not in f1 and button_ctx.author not in f2:  # if author has not voted already
-                    embed = discord.Embed(title=f"Vote by: {context.author.display_name}", color=0xc6c6c6)
-                    embed.add_field(name="Kick user:", value=member.mention, inline=False)
-                    if button_ctx.component['label'] == 'F1':
-                        f1.append(button_ctx.author)
-                    elif button_ctx.component['label'] == 'F2':
-                        f2.append(button_ctx.author)
-                    embed.set_footer(text=f"Yes: {len(f1)} | No: {len(f2)}")
-                    await button_ctx.edit_origin(embed=embed)
-                else:
-                    await button_ctx.send("You've already voted on this kick.", hidden=True)
+            client.votekick_msg = await context.send(embed=embed, view=VoteKickView())
 
-                if len(f1) + len(f2) >= len(context.author.voice.channel.members):
-                    if len(f1) >= (len(f1) + len(f2) - 1):  # if those that voted f1 are all but the kickee, kick
-                        to_kick = True
-                    else:  # else dont kick
-                        to_kick = False
-                    if len(f2) != 1:  # if anyone other than the kickee voted no, just in like in cs, don't kick
-                        to_kick = False
-                    processed = True
-
-            embededit = None
-            if not to_kick:
-                embededit = discord.Embed(title="Vote Failed.", color=0xff0000)
-                embededit.add_field(name="Kick failed:", value="Not enough users voted.", inline=False)
-            elif to_kick:
-                embededit = discord.Embed(title="Vote Passed!", color=0x00ff00)
-                embededit.add_field(name="Kicking user...", value=member.mention, inline=False)
-                await member.move_to(None)
-            await msg.edit(embed=embededit, components=None)
-
+            await handle_button_press()  # handle initial autovotes
         else:
             await context.send(content="The specified user is not in your VC.", hidden=True)
     else:
         await context.send(content="You must be in a VC to use this.", hidden=True)
 
 
-@slash.slash(name='shell', guild_ids=slash_guilds)
+@client.hybrid_command(name='shell', guild_ids=slash_guilds)
 @commands.is_owner()
 async def shell(context, *, command: str):
     check = discord.utils.get(context.guild.emojis, name="checkmark")
@@ -169,8 +182,8 @@ async def shell(context, *, command: str):
         await context.send(_e)
 
 
-@slash.slash(name='cryptopricebotsrestart', guild_ids=slash_guilds)
-async def cryptopricebotsrestart(context: SlashContext):
+@client.hybrid_command(name='cryptopricebotsrestart', guild_ids=slash_guilds)
+async def cryptopricebotsrestart(context):
     check = discord.utils.get(context.guild.emojis, name="checkmark")
     try:
         pipe = subprocess.Popen("sudo service crypto-price-bots restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -188,7 +201,7 @@ async def cryptopricebotsrestart(context: SlashContext):
         await context.send(str(_e))
 
 
-@slash.slash(name='purge', guild_ids=slash_guilds)
+@client.hybrid_command(name='purge', guild_ids=slash_guilds)
 @commands.is_owner()
 async def purge(context, number: int = None):
     if number is None or number > 100:
@@ -204,7 +217,7 @@ async def purge(context, number: int = None):
         await msg.delete()
 
 
-@slash.slash(name='unpurge', guild_ids=slash_guilds)
+@client.hybrid_command(name='unpurge', guild_ids=slash_guilds)
 @commands.is_owner()
 async def restore(context, number: int = 0):
     if number > 100:
@@ -236,13 +249,13 @@ async def restore(context, number: int = 0):
     await m.delete()
 
 
-@slash.slash(name='coin', guild_ids=slash_guilds)
-async def coin(context: SlashContext):
+@client.hybrid_command(name='coin', guild_ids=slash_guilds)
+async def coin(context):
     await context.send(random.choice(["Heads", "Tails"]))
 
 
-@slash.slash(name='temps', guild_ids=slash_guilds)
-async def temps(context: SlashContext):
+@client.hybrid_command(name='temps', guild_ids=slash_guilds)
+async def temps(context):
     pipe = subprocess.Popen("ssh pi@serverpi1 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
@@ -270,16 +283,16 @@ async def temps(context: SlashContext):
     await context.send(f"serverpi1: `{serverpi1}`\nserverpi2: `{serverpi2}`\nserverpi3: `{serverpi3}`\nserverpi4: `{serverpi4}`")
 
 
-@slash.slash(name="restart", guild_ids=slash_guilds)
+@client.hybrid_command(name="restart", guild_ids=slash_guilds)
 @commands.is_owner()
-async def restart(context: SlashContext):
+async def restart(context):
     m = await context.reply(":white_check_mark:")
     await m.delete()
     subprocess.Popen("sudo service serverpi restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-@slash.slash(name="lcdreset", guild_ids=slash_guilds)
-async def lcdreset(context: SlashContext):
+@client.hybrid_command(name="lcdreset", guild_ids=slash_guilds)
+async def lcdreset(context):
     pipe = subprocess.Popen("ssh pi@serverpi4 sudo service crypto-prices restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
@@ -292,13 +305,5 @@ async def lcdreset(context: SlashContext):
         await msg.delete()
     else:
         await context.reply(combined)
-
-
-for extension in startup_extensions:
-    try:
-        client.load_extension(extension)
-        print(f"Extension {extension} loaded")
-    except Exception as e:
-        print(e)
 
 client.run(TOKEN)

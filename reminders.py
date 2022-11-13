@@ -27,5 +27,5 @@ class Reminders(commands.Cog):
             scheduler.start()
 
 
-def setup(client):
-    client.add_cog(Reminders(client))
+async def setup(client):
+    await client.add_cog(Reminders(client))

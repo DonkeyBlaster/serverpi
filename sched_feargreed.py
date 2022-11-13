@@ -44,5 +44,5 @@ class FearGreed(commands.Cog):
         await context.send(f"Updated role name to {name_string}")
 
 
-def setup(client):
-    client.add_cog(FearGreed(client))
+async def setup(client):
+    await client.add_cog(FearGreed(client))
