@@ -17,7 +17,7 @@ load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 delete_cooldown = 2
 
-startup_extensions = ["futures", "staking", "lending", "chathandler", "sched_feargreed", "sched_exchangestats", "reminders"]
+startup_extensions = ["chathandler", "sched_feargreed", "reminders"]
 cog_choices = []
 for extstr in startup_extensions:
     cog_choices.append(create_choice(name=extstr, value=extstr))
