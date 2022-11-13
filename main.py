@@ -1,16 +1,18 @@
 import asyncio
 import os
-import subprocess
 import random
-import discord
+import subprocess
 import time
+from typing import List
 
-from discord import ui
-from dotenv import load_dotenv
-from guildlist import slash_guilds
+import discord
 from discord import app_commands
+from discord import ui
 from discord.ext import commands
 from discord.ext.commands import Bot
+from dotenv import load_dotenv
+
+from guildlist import slash_guilds
 
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
@@ -28,7 +30,9 @@ async def on_ready():
             print(f"Extension {extension} loaded")
         except Exception as e:
             print(e)
-
+    for guild in slash_guilds:
+        await client.tree.sync(guild=discord.Object(id=guild))
+        print("Synced slash commands for guild " + str(guild))
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
@@ -46,13 +50,29 @@ REST API: `{int(pingtime)}ms`
 WS API Heartbeat: `{int(client.latency * 1000)}ms`""")
 
 
-@client.hybrid_command(name='load')
+async def extensions_autocomplete(
+        interaction: discord.Interaction,
+        current: str
+) -> List[app_commands.Choice[str]]:
+    return [
+        app_commands.Choice(name=extension, value=extension)
+        for extension in startup_extensions if current.lower() in extension.lower()
+    ]
+
+
+@client.hybrid_group(name="extensions")
 @app_commands.guilds(*slash_guilds)
 @commands.is_owner()
-async def load(context, ext):
+async def extensions(context):
+    pass
+
+
+@extensions.command(name='load')
+@app_commands.autocomplete(extension=extensions_autocomplete)
+async def load(context, extension):
     try:
-        await client.load_extension(ext)
-        msg = await context.send(f"Extension `{ext}` loaded.")
+        await client.load_extension(extension)
+        msg = await context.send(f"Extension `{extension}` loaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
     except Exception as _e:
@@ -63,24 +83,22 @@ async def load(context, ext):
             await context.send("Error exceeds 2000 characters. See console for details.")
 
 
-@client.hybrid_command(name='unload')
-@app_commands.guilds(*slash_guilds)
-@commands.is_owner()
-async def unload(context, ext):
-    await client.unload_extension(ext)
-    msg = await context.send(f"Extension `{ext}` unloaded.")
+@extensions.command(name='unload')
+@app_commands.autocomplete(extension=extensions_autocomplete)
+async def unload(context, extension):
+    await client.unload_extension(extension)
+    msg = await context.send(f"Extension `{extension}` unloaded.")
     await asyncio.sleep(delete_cooldown)
     await msg.delete()
 
 
-@client.hybrid_command(name='reload')
-@app_commands.guilds(*slash_guilds)
-@commands.is_owner()
-async def reload(context, ext):
+@extensions.command(name='reload')
+@app_commands.autocomplete(extension=extensions_autocomplete)
+async def reload(context, extension):
     try:
-        await client.unload_extension(ext)
-        await client.load_extension(ext)
-        msg = await context.send(f"Extension `{ext}` reloaded.")
+        await client.unload_extension(extension)
+        await client.load_extension(extension)
+        msg = await context.send(f"Extension `{extension}` reloaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
     except Exception as _e:
@@ -194,7 +212,8 @@ async def shell(context, *, command: str):
 async def cryptopricebotsrestart(context):
     check = discord.utils.get(context.guild.emojis, name="checkmark")
     try:
-        pipe = subprocess.Popen("sudo service crypto-price-bots restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pipe = subprocess.Popen("sudo service crypto-price-bots restart", shell=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
         out, err = pipe.communicate()
         response = out.decode()
         error = err.decode()
@@ -217,7 +236,8 @@ async def purge(context, number: int = None):
         await context.send(f"{context.author.mention} :x: Maximum 100 messages.", hidden=True)
     else:
         client.deleted_messages = []
-        async for message in context.channel.history(limit=number):  # number+1 was removed because the slashcommand doesn't count as a message
+        async for message in context.channel.history(
+                limit=number):  # number+1 was removed because the slashcommand doesn't count as a message
             client.deleted_messages.append(message)
         client.deleted_messages.reverse()
         await context.channel.delete_messages(client.deleted_messages)
@@ -236,7 +256,9 @@ async def restore(context, number: int = 0):
         color = 0x2f3136
         for message in client.deleted_messages:
             # Check if message has content
-            embed = discord.Embed(description="No Message Content", color=color) if not message.content else discord.Embed(description=message.content, color=color)
+            embed = discord.Embed(description="No Message Content",
+                                  color=color) if not message.content else discord.Embed(description=message.content,
+                                                                                         color=color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             # Check if message has attachments
             if message.attachments:
@@ -247,7 +269,9 @@ async def restore(context, number: int = 0):
         color = 0x2f3136
         for i in range(number):
             message = client.deleted_messages[i]
-            embed = discord.Embed(description="No Message Content", color=color) if not message.content else discord.Embed(description=message.content, color=color)
+            embed = discord.Embed(description="No Message Content",
+                                  color=color) if not message.content else discord.Embed(description=message.content,
+                                                                                         color=color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             # Check if message has attachments
             if message.attachments:
@@ -268,31 +292,36 @@ async def coin(context):
 @client.hybrid_command(name='temps')
 @app_commands.guilds(*slash_guilds)
 async def temps(context):
-    pipe = subprocess.Popen("ssh pi@serverpi1 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipe = subprocess.Popen("ssh pi@serverpi1 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
     serverpi1 = response + error
 
-    pipe = subprocess.Popen("ssh pi@serverpi2 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipe = subprocess.Popen("ssh pi@serverpi2 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
     serverpi2 = response + error
 
-    pipe = subprocess.Popen("ssh pi@serverpi3 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipe = subprocess.Popen("ssh pi@serverpi3 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
     serverpi3 = response + error
 
-    pipe = subprocess.Popen("ssh pi@serverpi4 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipe = subprocess.Popen("ssh pi@serverpi4 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
     serverpi4 = response + error
 
-    await context.send(f"serverpi1: `{serverpi1}`\nserverpi2: `{serverpi2}`\nserverpi3: `{serverpi3}`\nserverpi4: `{serverpi4}`")
+    await context.send(
+        f"serverpi1: `{serverpi1}`\nserverpi2: `{serverpi2}`\nserverpi3: `{serverpi3}`\nserverpi4: `{serverpi4}`")
 
 
 @client.hybrid_command(name="restart")
@@ -307,7 +336,8 @@ async def restart(context):
 @client.hybrid_command(name="lcdreset")
 @app_commands.guilds(*slash_guilds)
 async def lcdreset(context):
-    pipe = subprocess.Popen("ssh pi@serverpi4 sudo service crypto-prices restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pipe = subprocess.Popen("ssh pi@serverpi4 sudo service crypto-prices restart", shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
@@ -319,5 +349,6 @@ async def lcdreset(context):
         await msg.delete()
     else:
         await context.reply(combined)
+
 
 client.run(TOKEN)
