@@ -1,8 +1,8 @@
 import json
+
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ext import commands
-from discord_slash import cog_ext, SlashContext
 
 from guildlist import slash_guilds
 
@@ -27,7 +27,7 @@ class FearGreed(commands.Cog):
     def __init__(self, client):
         self.client = client
         scheduler.start()
-        scheduler.add_job(self.scheduled_update, 'cron', hour=17, minute=1, args=[self])
+        scheduler.add_job(self.scheduled_update, 'cron', hour=16, minute=1, args=[self])
 
     async def scheduled_update(*args):
         if len(args) > 0:
@@ -37,8 +37,8 @@ class FearGreed(commands.Cog):
             channel = client.get_channel(696082479752413277)
             await channel.send(f"Updated F&G to {name_string}")
 
-    @cog_ext.cog_slash(name='forceupdaterolename', guild_ids=slash_guilds)
-    async def forceupdaterolename(self, context: SlashContext):
+    @commands.hybrid_command(name='forceupdaterolename', guild_ids=slash_guilds)
+    async def forceupdaterolename(self, context):
         name_string = get_name_string()
         await update_role_name(self.client, name_string)
         await context.send(f"Updated role name to {name_string}")
