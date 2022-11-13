@@ -275,8 +275,8 @@ async def restore(context, number: int = 0):
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             # Check if message has attachments
             if message.attachments:
-                for i in message.attachments:
-                    embed.add_field(name="Attachment", value=i.url)
+                for j in message.attachments:
+                    embed.add_field(name="Attachment", value=j.url)
             await context.channel.send(embed=embed)
     m = await context.reply("Restored messages.")
     await asyncio.sleep(delete_cooldown)
