@@ -1,10 +1,10 @@
 import asyncio
+import os
 import subprocess
 import random
 import discord
 import time
-import ftx_positionmanager
-import ftx_ws
+from dotenv import load_dotenv
 from guildlist import slash_guilds
 from discord.ext import commands
 from discord.ext.commands import Bot
@@ -13,7 +13,8 @@ from discord_slash.utils.manage_components import create_button, create_actionro
 from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.model import ButtonStyle
 
-TOKEN = open('token.txt', 'r').read()
+load_dotenv()
+TOKEN = os.getenv('BOT_TOKEN')
 delete_cooldown = 2
 
 startup_extensions = ["futures", "staking", "lending", "chathandler", "sched_feargreed", "sched_exchangestats", "reminders"]
@@ -38,7 +39,6 @@ async def on_ready():
     print('------')
     client.futures_channel = client.get_channel(831064380242133002)
     client.notify_next_fill = True
-    await ftx_ws.main_loop(client)
 
 
 @slash.slash(name='ping', guild_ids=slash_guilds)

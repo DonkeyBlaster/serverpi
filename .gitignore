@@ -1,6 +1,7 @@
 .idea
 __pycache__
+venv
+.env
 
 ftx_key.txt
 ftx_sec.txt
-token.txt
