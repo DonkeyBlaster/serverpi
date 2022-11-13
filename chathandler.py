@@ -8,10 +8,9 @@ from discord.ext import commands
 
 
 def get_usd_cad_conversion():
-    try:
-        return float(json.loads(requests.get("https://api.coinbase.com/v2/exchange-rates", params={"currency": "USD"}).content)['data']['rates']['CAD'])
-    except json.decoder.JSONDecodeError:
-        return 1 / float(json.loads(requests.get('https://ftx.com/api/markets/CAD/USD').content)['result']['last'])
+    return float(
+        json.loads(requests.get("https://api.coinbase.com/v2/exchange-rates", params={"currency": "USD"}).content)[
+            'data']['rates']['CAD'])
 
 
 def parse_price(price_input):
