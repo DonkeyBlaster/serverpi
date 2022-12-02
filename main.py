@@ -286,6 +286,7 @@ async def restore(context, number: int = 0):
 @client.hybrid_command(name='coin')
 @app_commands.guilds(*slash_guilds)
 async def coin(context):
+    """Flips a coin."""
     await context.send(random.choice(["Heads", "Tails"]))
 
 
