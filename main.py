@@ -331,7 +331,7 @@ async def temps(context):
 async def restart(context):
     m = await context.reply(":white_check_mark:")
     await m.delete()
-    subprocess.Popen("sudo service serverpi restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.Popen("sudo service serverpi restart", shell=True)
 
 
 @client.hybrid_command(name="update")
@@ -339,7 +339,7 @@ async def restart(context):
 @commands.is_owner()
 async def update(context):
     await context.message.add_reaction("🔄")
-    pipe = subprocess.Popen("git pull", shell=True, stdout=subprocess.PIPE)
+    pipe = subprocess.Popen("git pull", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
@@ -347,7 +347,7 @@ async def update(context):
     await context.send(f"```{combined}```")
     if error is None:
         await context.send("Restarting...")
-        subprocess.Popen("sudo service serverpi restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.Popen("sudo service serverpi restart", shell=True)
     else:
         await context.send("Error while updating, not restarting.")
 
