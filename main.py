@@ -162,30 +162,30 @@ async def handle_button_press():
         embededit.add_field(name="Kick user:", value=client.votekick_target.mention, inline=False)
         embededit.set_footer(text=f"Yes: {lenf1} | No: {lenf2}")
 
-    client.votekick_msg = await client.votekick_msg.edit(embed=embededit, view=VoteKickView())
+    await client.votekick_interaction.edit_original_response(embed=embededit, view=VoteKickView())
 
 
-@client.hybrid_command(name='votekick')
-@app_commands.guilds(*slash_guilds)
-async def votekick(context, target: discord.Member):
-    if context.author.voice:
-        if target.voice.channel == context.author.voice.channel:
+@client.tree.command(name='votekick', description="Starts a vote to kick a user from the voice channel you are in.", guilds=slash_guilds)
+async def votekick(interaction: discord.Interaction, target: discord.Member):
+    if interaction.user.voice:
+        if target.voice.channel == interaction.user.voice.channel:
             # autovotes like csgo
-            client.votekick_f1 = [context.author]
+            client.votekick_f1 = [interaction.user]
             client.votekick_f2 = [target]
-            client.votekick_author = context.author
+            client.votekick_author = interaction.user
             client.votekick_target = target
 
             embed = discord.Embed(title=f"Vote by: {client.votekick_author}", color=0xc6c6c6)
             embed.add_field(name="Kick user:", value=client.votekick_target.mention, inline=False)
             embed.set_footer(text="Yes: 1 | No: 1")
-            client.votekick_msg = await context.send(embed=embed, view=VoteKickView())
+            client.votekick_interaction = interaction
+            await interaction.response.send_message(embed=embed, view=VoteKickView())
 
             await handle_button_press()  # handle initial autovotes
         else:
-            await context.send(content="The specified user is not in your VC.", hidden=True)
+            await interaction.response.send_message(content="The specified user is not in your VC.", ephemeral=True)
     else:
-        await context.send(content="You must be in a VC to use this.", hidden=True)
+        await interaction.response.send_message(content="You must be in a VC to use this.", ephemeral=True)
 
 
 @client.tree.command(name='shell', description="Runs a bash command on the server", guilds=slash_guilds)
@@ -232,7 +232,7 @@ async def cryptopricebotsrestart(interaction: discord.Interaction):
 async def purge(interaction: discord.Interaction, number: int = None):
     await interaction.response.defer()
     if number is None or number > 100:
-        await interaction.response.send_message(f"{interaction.user.mention} :x: Maximum 100 messages.", hidden=True)
+        await interaction.response.send_message(f"{interaction.user.mention} :x: Maximum 100 messages.", ephemeral=True)
     else:
         client.deleted_messages = []
 
