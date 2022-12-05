@@ -315,7 +315,7 @@ async def restart(interactions: discord.Interaction):
     subprocess.Popen("sudo service serverpi restart", shell=True)
 
 
-@client.tree.command(name="update", description="Pulls from the GitHub Repository and restarts the bot", guilds=slash_guilds)
+@client.tree.command(name="update", description="Pulls from the GitHub and restarts the bot", guilds=slash_guilds)
 @commands.is_owner()
 async def update(interaction: discord.Interaction):
     await interaction.response.defer()
