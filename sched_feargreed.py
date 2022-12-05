@@ -1,5 +1,6 @@
 import json
 
+import discord
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord import app_commands
@@ -38,13 +39,12 @@ class FearGreed(commands.Cog):
             channel = client.get_channel(696082479752413277)
             await channel.send(f"Updated F&G to {name_string}")
 
-    @commands.hybrid_command(name='forceupdaterolename')
-    @app_commands.guilds(*slash_guilds)
-    async def forceupdaterolename(self, context):
+    @app_commands.command(name='forceupdaterolename', description='Force update the F&G role name')
+    async def forceupdaterolename(self, interaction: discord.Interaction):
         name_string = get_name_string()
         await update_role_name(self.client, name_string)
-        await context.send(f"Updated role name to {name_string}")
+        await interaction.response.send_message(f"Updated role name to {name_string}")
 
 
 async def setup(client):
-    await client.add_cog(FearGreed(client))
+    await client.add_cog(FearGreed(client), guilds=slash_guilds)
