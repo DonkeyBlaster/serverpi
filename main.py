@@ -326,7 +326,7 @@ async def update(interaction: discord.Interaction):
     combined = response + error
     await interaction.followup.send(f"```{combined}```")
     if "Already up to date." in response:
-        await interaction.followup.send("No update available.")
+        pass  # Do nothing
     elif error == "":
         await interaction.followup.send("Restarting...")
         subprocess.Popen("sudo service serverpi restart", shell=True)
