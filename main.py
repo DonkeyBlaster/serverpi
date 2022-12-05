@@ -12,14 +12,14 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
-from guildlist import slash_guilds
+from guildlist import slash_guilds, guild_ids
 
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 delete_cooldown = 2
 
 startup_extensions = ["chathandler", "sched_feargreed", "reminders"]
-client = Bot(intents=discord.Intents.all(), command_prefix='!')
+client = Bot(intents=discord.Intents.all(), command_prefix=' ')
 
 
 @client.event
@@ -30,22 +30,21 @@ async def on_ready():
             print(f"Extension {extension} loaded")
         except Exception as e:
             print(e)
-    for guild in slash_guilds:
-        await client.tree.sync(guild=discord.Object(id=guild))
-        print("Synced slash commands for guild " + str(guild))
+    for id in guild_ids:
+        await client.tree.sync(guild=discord.Object(id=id))
+        print("Synced slash commands for guild " + str(id))
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
 
 
-@client.hybrid_command(name='ping')
-@app_commands.guilds(*slash_guilds)
-async def ping(context):
+@client.tree.command(name='ping', description="Returns the bot's ping", guilds=slash_guilds)
+async def ping(interaction: discord.Interaction):
     beforeping = time.monotonic()
-    messageping = await context.send("Pong!")
+    await interaction.response.send_message("Pong!")
     pingtime = (time.monotonic() - beforeping) * 1000
-    await messageping.edit(content=f"""Pong!
+    await interaction.edit_original_response(content=f"""Bing bing bong bong bing bing bing
 REST API: `{int(pingtime)}ms`
 WS API Heartbeat: `{int(client.latency * 1000)}ms`""")
 
@@ -60,53 +59,54 @@ async def extensions_autocomplete(
     ]
 
 
-@client.hybrid_group(name="extensions")
-@app_commands.guilds(*slash_guilds)
-@commands.is_owner()
-async def extensions(context):
-    pass
+extensions = app_commands.Group(name="extensions", description="Extension management")
 
 
-@extensions.command(name='load')
+@extensions.command(name='load', description="Loads the given extension")
 @app_commands.autocomplete(extension=extensions_autocomplete)
-async def load(context, extension):
+@commands.is_owner()
+async def load(interaction: discord.Interaction, extension: str):
     try:
         await client.load_extension(extension)
-        msg = await context.send(f"Extension `{extension}` loaded.")
+        msg = await interaction.response.send_message(f"Extension `{extension}` loaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
     except Exception as _e:
         try:
-            await context.send(str(_e))
+            await interaction.response.send_message(str(_e))
         except discord.errors.HTTPException as _e:
             print(_e)
-            await context.send("Error exceeds 2000 characters. See console for details.")
+            await interaction.response.send_message("Error exceeds 2000 characters. See console for details.")
 
 
-@extensions.command(name='unload')
+@extensions.command(name='unload', description="Unloads the given extension")
 @app_commands.autocomplete(extension=extensions_autocomplete)
-async def unload(context, extension):
+@commands.is_owner()
+async def unload(interaction: discord.Interaction, extension: str):
     await client.unload_extension(extension)
-    msg = await context.send(f"Extension `{extension}` unloaded.")
+    msg = await interaction.response.send_message(f"Extension `{extension}` unloaded.")
     await asyncio.sleep(delete_cooldown)
     await msg.delete()
 
 
-@extensions.command(name='reload')
+@extensions.command(name='reload', description="Reloads the given extension")
 @app_commands.autocomplete(extension=extensions_autocomplete)
-async def reload(context, extension):
+@commands.is_owner()
+async def reload(interaction: discord.Interaction, extension: str):
     try:
         await client.unload_extension(extension)
         await client.load_extension(extension)
-        msg = await context.send(f"Extension `{extension}` reloaded.")
+        msg = await interaction.response.send_message(f"Extension `{extension}` reloaded.")
         await asyncio.sleep(delete_cooldown)
         await msg.delete()
     except Exception as _e:
         try:
-            await context.send(str(_e))
+            await interaction.response.send_message(str(_e))
         except discord.errors.HTTPException as _e:
             print(_e)
-            await context.send("Error exceeds 2000 characters. See console for details.")
+            await interaction.response.send_message("Error exceeds 2000 characters. See console for details.")
+
+client.tree.add_command(extensions, guilds=slash_guilds)
 
 
 class VoteKickView(ui.View):
@@ -188,11 +188,11 @@ async def votekick(context, target: discord.Member):
         await context.send(content="You must be in a VC to use this.", hidden=True)
 
 
-@client.hybrid_command(name='shell')
-@app_commands.guilds(*slash_guilds)
+@client.tree.command(name='shell', description="Runs a bash command on the server", guilds=slash_guilds)
 @commands.is_owner()
-async def shell(context, *, command: str):
-    check = discord.utils.get(context.guild.emojis, name="checkmark")
+async def shell(interaction: discord.Interaction, *, command: str):
+    await interaction.response.defer()
+    check = discord.utils.get(interaction.guild.emojis, name="checkmark")
     try:
         pipe = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = pipe.communicate()
@@ -200,17 +200,16 @@ async def shell(context, *, command: str):
         response = out.decode()
         combined = response + error
         if combined == "":
-            await context.send(f"{check} Command executed with no output.")
+            await interaction.followup.send(f"{check} Command executed with no output.")
         else:
-            await context.send(f"```{combined}```")
+            await interaction.followup.send(f"```{combined}```")
     except discord.errors.HTTPException as _e:
-        await context.send(_e)
+        await interaction.followup.send(_e)
 
 
-@client.hybrid_command(name='cryptopricebotsrestart')
-@app_commands.guilds(*slash_guilds)
-async def cryptopricebotsrestart(context):
-    check = discord.utils.get(context.guild.emojis, name="checkmark")
+@client.tree.command(name='cryptopricebotsrestart', description="Restarts (some of) the crypto price bots", guilds=slash_guilds)
+async def cryptopricebotsrestart(interaction: discord.Interaction):
+    check = discord.utils.get(interaction.guild.emojis, name="checkmark")
     try:
         pipe = subprocess.Popen("sudo service crypto-price-bots restart", shell=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -219,80 +218,68 @@ async def cryptopricebotsrestart(context):
         error = err.decode()
         combined = response + error
         if combined == "":
-            msg = await context.send(f"{check} Price bots restarted.")
+            msg = await interaction.response.send_message(f"{check} Price bots restarted.")
             await asyncio.sleep(delete_cooldown)
             await msg.delete()
         else:
-            await context.send(f"```{combined}```")
+            await interaction.response.send_message(f"```{combined}```")
     except discord.errors.HTTPException as _e:
-        await context.send(str(_e))
+        await interaction.response.send_message(str(_e))
 
 
-@client.hybrid_command(name='purge')
-@app_commands.guilds(*slash_guilds)
+@client.tree.command(name='purge', description="Purges a specified number of messages", guilds=slash_guilds)
 @commands.is_owner()
-async def purge(context, number: int = None):
+async def purge(interaction: discord.Interaction, number: int = None):
+    await interaction.response.defer()
     if number is None or number > 100:
-        await context.send(f"{context.author.mention} :x: Maximum 100 messages.", hidden=True)
+        await interaction.response.send_message(f"{interaction.user.mention} :x: Maximum 100 messages.", hidden=True)
     else:
         client.deleted_messages = []
-        async for message in context.channel.history(
-                limit=number):  # number+1 was removed because the slashcommand doesn't count as a message
+
+        skipped_first: bool = False
+        async for message in interaction.channel.history(limit=number+1):  # +1 to include the command message
+            if not skipped_first:
+                skipped_first = True
+                continue
             client.deleted_messages.append(message)
+
         client.deleted_messages.reverse()
-        await context.channel.delete_messages(client.deleted_messages)
-        msg = await context.send(f"Deleted {number} messages.")
+        await interaction.channel.delete_messages(client.deleted_messages)
+        await interaction.followup.send(f"Deleted {number} messages.")
         await asyncio.sleep(delete_cooldown)
-        await msg.delete()
+        await interaction.delete_original_response()
 
 
-@client.hybrid_command(name='unpurge')
-@app_commands.guilds(*slash_guilds)
+@client.tree.command(name='unpurge', description="Unpurges all previously deleted messages", guilds=slash_guilds)
 @commands.is_owner()
-async def restore(context, number: int = 0):
-    if number > 100:
-        await context.send(f"{context.author.mention} :x: Maximum 100 messages.", hidden=True)
-    elif number == 0 and client.deleted_messages is not None:
-        color = 0x2f3136
-        for message in client.deleted_messages:
-            # Check if message has content
-            embed = discord.Embed(description="No Message Content",
-                                  color=color) if not message.content else discord.Embed(description=message.content,
-                                                                                         color=color)
-            embed.set_author(name=message.author, icon_url=message.author.avatar_url)
-            # Check if message has attachments
-            if message.attachments:
-                for i in message.attachments:
-                    embed.add_field(name="Attachment", value=i.url)
-            await context.channel.send(embed=embed)
-    else:
-        color = 0x2f3136
-        for i in range(number):
-            message = client.deleted_messages[i]
-            embed = discord.Embed(description="No Message Content",
-                                  color=color) if not message.content else discord.Embed(description=message.content,
-                                                                                         color=color)
-            embed.set_author(name=message.author, icon_url=message.author.avatar_url)
-            # Check if message has attachments
-            if message.attachments:
-                for j in message.attachments:
-                    embed.add_field(name="Attachment", value=j.url)
-            await context.channel.send(embed=embed)
-    m = await context.reply("Restored messages.")
+async def unpurge(interaction: discord.Interaction):
+    color = 0x2f3136
+    await interaction.response.defer()
+
+    for message in client.deleted_messages:
+        # Check if message has content
+        embed = discord.Embed(description="No Message Content",
+                              color=color) if not message.content else discord.Embed(description=message.content,
+                                                                                     color=color)
+        embed.set_author(name=message.author, icon_url=message.author.avatar)
+        # Check if message has attachments
+        if message.attachments:
+            for i in message.attachments:
+                embed.add_field(name="Attachment", value=i.url)
+        await interaction.channel.send(embed=embed)
+
+    m = await interaction.followup.send("Restored messages.")
     await asyncio.sleep(delete_cooldown)
     await m.delete()
 
 
-@client.hybrid_command(name='coin')
-@app_commands.guilds(*slash_guilds)
-async def coin(context):
-    """Flips a coin."""
-    await context.send(random.choice(["Heads", "Tails"]))
+@client.tree.command(name='coin', description="Flips a coin", guilds=slash_guilds)
+async def coin(interaction: discord.Interaction):
+    await interaction.response.send_message(random.choice(["Heads", "Tails"]))
 
 
-@client.hybrid_command(name='temps')
-@app_commands.guilds(*slash_guilds)
-async def temps(context):
+@client.tree.command(name='temps', description="Gets the current temperature of the serverpis", guilds=slash_guilds)
+async def temps(interaction: discord.Interaction):
     pipe = subprocess.Popen("ssh pi@serverpi1 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     out, err = pipe.communicate()
@@ -314,41 +301,36 @@ async def temps(context):
     error = err.decode()
     serverpi3 = response + error
 
-    pipe = subprocess.Popen("ssh pi@serverpi4 vcgencmd measure_temp", shell=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    out, err = pipe.communicate()
-    response = out.decode()
-    error = err.decode()
-    serverpi4 = response + error
-
-    await context.send(
-        f"serverpi1: `{serverpi1}`\nserverpi2: `{serverpi2}`\nserverpi3: `{serverpi3}`\nserverpi4: `{serverpi4}`")
+    await interaction.response.send_message(f"""serverpi1: `{serverpi1}`
+serverpi2: `{serverpi2}`
+serverpi3: `{serverpi3}`""")
 
 
-@client.hybrid_command(name="restart")
-@app_commands.guilds(*slash_guilds)
+@client.tree.command(name="restart", description="Restarts the bot", guilds=slash_guilds)
 @commands.is_owner()
-async def restart(context):
-    m = await context.reply(":white_check_mark:")
-    await m.delete()
+async def restart(interactions: discord.Interaction):
+    await interactions.response.send_message(":white_check_mark:")
+    await asyncio.sleep(0.2)
+    await interactions.delete_original_response()
     subprocess.Popen("sudo service serverpi restart", shell=True)
 
 
-@client.hybrid_command(name="update")
-@app_commands.guilds(*slash_guilds)
+@client.tree.command(name="update", description="Pulls from the GitHub Repository and restarts the bot", guilds=slash_guilds)
 @commands.is_owner()
-async def update(context):
-    await context.message.add_reaction("🔄")
+async def update(interaction: discord.Interaction):
+    await interaction.response.defer()
     pipe = subprocess.Popen("git pull", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
     error = err.decode()
     combined = response + error
-    await context.send(f"```{combined}```")
-    if error is None:
-        await context.send("Restarting...")
+    await interaction.response.send_message(f"```{combined}```")
+    if response == "Already up to date.":
+        await interaction.followup.send("No update available.")
+    elif error == "":
+        await interaction.followup.send("Restarting...")
         subprocess.Popen("sudo service serverpi restart", shell=True)
     else:
-        await context.send("Error while updating, not restarting.")
+        await interaction.followup.send("Error while updating, not restarting.")
 
 client.run(TOKEN)
