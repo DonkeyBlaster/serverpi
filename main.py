@@ -338,7 +338,7 @@ async def restart(context):
 @app_commands.guilds(*slash_guilds)
 @commands.is_owner()
 async def update(context):
-    await context.add_reaction("🔄")
+    await context.message.add_reaction("🔄")
     pipe = subprocess.Popen("git pull", shell=True, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
     response = out.decode()
