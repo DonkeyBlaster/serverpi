@@ -333,23 +333,4 @@ async def restart(context):
     await m.delete()
     subprocess.Popen("sudo service serverpi restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-
-@client.hybrid_command(name="lcdreset")
-@app_commands.guilds(*slash_guilds)
-async def lcdreset(context):
-    pipe = subprocess.Popen("ssh pi@serverpi4 sudo service crypto-prices restart", shell=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    out, err = pipe.communicate()
-    response = out.decode()
-    error = err.decode()
-    combined = response + error
-    if combined == "":
-        check = discord.utils.get(context.guild.emojis, name="checkmark")
-        msg = await context.reply(f"{check} LCD display reset.")
-        await asyncio.sleep(delete_cooldown)
-        await msg.delete()
-    else:
-        await context.reply(combined)
-
-
 client.run(TOKEN)
