@@ -331,6 +331,7 @@ async def update(interaction: discord.Interaction):
         await interaction.followup.send("Restarting...")
         subprocess.Popen("sudo service serverpi restart", shell=True)
     else:
+        print(error)
         await interaction.followup.send("Error while updating, not restarting.")
 
 client.run(TOKEN)
