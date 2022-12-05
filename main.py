@@ -324,7 +324,7 @@ async def update(interaction: discord.Interaction):
     response = out.decode()
     error = err.decode()
     combined = response + error
-    await interaction.response.send_message(f"```{combined}```")
+    await interaction.followup.send(f"```{combined}```")
     if response == "Already up to date.":
         await interaction.followup.send("No update available.")
     elif error == "":
