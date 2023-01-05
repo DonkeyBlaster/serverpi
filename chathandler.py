@@ -33,12 +33,15 @@ class ChatHandler(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        if message.author.id == self.client.user.id:
+            return
+
         msgc: str = message.content.lower()
 
         # michael!!!
         if "https://tenor.com/view/michael-btb-michael-gif-13025635" in msgc:
             await message.reply("<@315238599761330197>")
-        elif "315238599761330197" in msgc and "<" in msgc and message.author.id != self.client.user.id:
+        elif "315238599761330197" in msgc and "<" in msgc:
             await message.reply("https://tenor.com/view/michael-btb-michael-gif-13025635")
 
         if msgc == "auto restart price bots" and message.author.id == 636013327276965889:
