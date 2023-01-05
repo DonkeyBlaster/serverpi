@@ -38,6 +38,8 @@ class ChatHandler(commands.Cog):
         # michael!!!
         if "https://tenor.com/view/michael-btb-michael-gif-13025635" in msgc:
             await message.reply("<@315238599761330197>")
+        elif "315238599761330197" in msgc and "<" in msgc:
+            await message.reply("https://tenor.com/view/michael-btb-michael-gif-13025635")
 
         if msgc == "auto restart price bots" and message.author.id == 636013327276965889:
             try:
