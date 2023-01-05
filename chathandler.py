@@ -35,6 +35,10 @@ class ChatHandler(commands.Cog):
     async def on_message(self, message):
         msgc: str = message.content.lower()
 
+        # michael!!!
+        if "https://tenor.com/view/michael-btb-michael-gif-13025635" in msgc:
+            await message.reply("<@315238599761330197>")
+
         if msgc == "auto restart price bots" and message.author.id == 636013327276965889:
             try:
                 pipe = subprocess.Popen("sudo service crypto-price-bots restart", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
